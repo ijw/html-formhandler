@@ -16,6 +16,8 @@ Internal code only. This role has no user interfaces.
 
 =cut
 
+# Sources of field information, from which fields are created.
+
 has 'fields_from_model' => ( isa => 'Bool', is => 'rw' );
 
 has 'field_list' => ( isa => 'HashRef|ArrayRef', is => 'rw', default => sub { {} } );
@@ -31,6 +33,13 @@ sub has_field_list {
     }
     return;
 }
+
+# Sources of field trait information.
+
+subtype 'TraitSpec' => as 'HashRef';
+coerce 'TraitSpec' => from 'ArrayRef' => via { +{ 'Field' => $_} };
+has 'field_traits' => ( is => 'ro', traits => ['Hash'], isa => 'TraitSpec', coerce => 1,
+     default => sub { +{} }, handles => { 'has_field_traits' => 'count' } );
 
 
 # This is the only entry point for this file.  It processes the
@@ -331,6 +340,12 @@ sub new_field_with_traits {
         my $widget_role = $self->get_widget_role( $widget, 'Field' );
         my $wrapper_role = $self->get_widget_role( $widget_wrapper, 'Wrapper' );
         push @traits, $widget_role, $wrapper_role;
+    }
+    if(exists($self->field_traits->{$class})) {
+	push @traits, $self->field_traits->{$class};
+    }
+    if(exists($self->field_traits->{'Field'})) {
+	push @traits, $self->field_traits->{$class};
     }
     if( @traits ) {
         $field = $class->new_with_traits( traits => \@traits, %{$field_attr} ); 
